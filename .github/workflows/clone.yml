@@ -1,0 +1,59 @@
+name: Gerar Clone do App
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile_url:
+        description: 'Link direto da nova foto de perfil'
+        required: true
+        type: string
+      open_tesouro:
+        description: 'Ativar função Abrir Tesouro (true/false)'
+        required: false
+        type: boolean
+        default: false
+
+  repository_dispatch:
+    types: [build_apk]
+
+jobs:
+  build-clone:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Baixar código-fonte
+      uses: actions/checkout@v4
+
+    - name: Configurar Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
+    - name: Substituir a Foto de Perfil
+      run: |
+        mkdir -p app/src/main/res/drawable
+        PROFILE_URL="${{ github.event.inputs.profile_url || github.event.client_payload.profile_url }}"
+        if [ -n "$PROFILE_URL" ]; then
+          curl -L -A "Mozilla/5.0" "$PROFILE_URL" -o app/src/main/res/drawable/ic_profile_user.png
+        fi
+
+    - name: Alterar Configuração do Código (Open Tesouro)
+      run: |
+        OPEN_TESOURO="${{ github.event.inputs.open_tesouro || github.event.client_payload.open_tesouro }}"
+        if [ "$OPEN_TESOURO" = "true" ]; then
+          echo "Ativando função tesouro..."
+          # Adicione seus comandos de substituição/sed aqui se necessário
+        fi
+
+    - name: Compilar APK
+      run: |
+        chmod +x ./gradlew
+        ./gradlew assembleRelease
+
+    - name: Disponibilizar APK para Download
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-clone-release
+        path: app/build/outputs/apk/release/*.apk
+        
