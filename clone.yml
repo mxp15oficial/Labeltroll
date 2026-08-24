@@ -1,0 +1,47 @@
+name: Gerar Clone do App
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile_photo_url:
+        description: 'Link direto da nova foto de perfil'
+        required: true
+        default: ''
+      enable_treasure:
+        description: 'Ativar função Abrir Tesouro (true/false)'
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  build-clone:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar código-fonte
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Substituir a Foto de Perfil
+        run: |
+          curl -L "${{ github.event.inputs.profile_photo_url }}" -o app/src/main/res/drawable/ic_profile_user.png
+
+      - name: Alterar Configuração do Código (Open Tesouro)
+        run: |
+          # Substitui a flag no arquivo de configuração do app
+          sed -i 's/ENABLE_TREASURE = false/ENABLE_TREASURE = ${{ github.event.inputs.enable_treasure }}/g' app/src/main/java/com/meuapp/AppConfig.kt
+
+      - name: Compilar APK
+        run: ./gradlew assembleRelease
+
+      - name: Disponibilizar APK para Download
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-clone-release
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          
